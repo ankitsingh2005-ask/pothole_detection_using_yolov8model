@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 1
+names: ['objects']
+
+roboflow:
+  workspace: losshole
+  project: my-first-project-fp399
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/losshole/my-first-project-fp399/dataset/2
