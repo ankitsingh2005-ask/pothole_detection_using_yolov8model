@@ -1,0 +1,27 @@
+# Ignore YOLO output folders
+runs/
+__pycache__/
+*.cache
+
+# Ignore dataset images/videos
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.mp4
+*.avi
+*.mov
+*.mkv
+
+# Ignore virtual environments
+yolovenv/
+venv/
+.env/
+
+# Ignore Python compiled files
+*.pyc
+*.pyo
+
+# Ignore system files
+.DS_Store
+Thumbs.db
