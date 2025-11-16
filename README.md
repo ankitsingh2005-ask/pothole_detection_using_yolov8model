@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # YOLOv8 training and inference helper
 
 This small helper includes `train.py` and `infer.py` for training and running YOLOv8 on a Roboflow-style dataset (a `data.yaml` in the project root referencing `train/`, `val/`, and `names`).
@@ -26,3 +27,6 @@ Notes:
 - The scripts are intentionally minimal wrappers around the `ultralytics.YOLO` API.
 - If you exported from Roboflow, your `data.yaml` should already be in the expected format. Verify the `train` and `val` paths are correct.
 - For larger datasets or GPU training, pick a larger model (yolov8s/m/l/x) and adjust batch/epochs accordingly.
+=======
+# pothole_detection_using_yolov8model
+>>>>>>> a6c4cc8b7c890e5904aeedb6508eed219b6cffa5
