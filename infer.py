@@ -1,48 +1,89 @@
-"""Simple YOLOv8 inference wrapper.
-
-Usage:
-  python infer.py --weights runs/train/exp/weights/best.pt --source test/images --save
-
-This script runs detection and optionally saves annotated images to a folder.
-"""
+import cv2
+import numpy as np
 import argparse
-from pathlib import Path
+import time
+from ultralytics import YOLO
 
-def parse_args():
+def get_args():
     p = argparse.ArgumentParser()
-    p.add_argument('--weights', required=True, help='path to trained weights .pt')
-    p.add_argument('--source', default='test/images', help='image, video or folder')
-    p.add_argument('--conf', type=float, default=0.25, help='confidence threshold')
-    p.add_argument('--iou', type=float, default=0.45, help='NMS IoU threshold')
-    p.add_argument('--save', action='store_true', help='save annotated results')
-    p.add_argument('--save-txt', action='store_true', help='save detection labels as txt')
-    p.add_argument('--project', default='runs/detect', help='save folder')
-    p.add_argument('--name', default=None, help='experiment name')
+    p.add_argument("--weights", required=True)
+    p.add_argument("--source", required=True)
+    p.add_argument("--output", default="output_polyline.mp4", help="saved video file name")
     return p.parse_args()
 
 def main():
-    args = parse_args()
-    try:
-        from ultralytics import YOLO
-    except Exception:
-        print('Failed to import ultralytics. Install requirements from requirements.txt')
-        raise
+    args = get_args()
 
+    print(f"Loading model: {args.weights}")
     model = YOLO(args.weights)
-    print(f"Running inference: weights={args.weights} source={args.source}")
 
-    results = model.predict(
-        source=args.source,
-        conf=args.conf,
-        iou=args.iou,
-        save=args.save,
-        save_txt=args.save_txt,
-        project=args.project,
-        name=args.name,
-    )
+    source = args.source
+    if source.isdigit():
+        source = int(source)
 
-    # Print a short summary
-    print(f"Completed inference. {len(results)} result sets saved to {args.project}/{args.name or 'exp'}")
+    cap = cv2.VideoCapture(source)
+    if not cap.isOpened():
+        print("❌ Error: Cannot open video/webcam")
+        return
 
-if __name__ == '__main__':
+    # ---- VIDEO WRITER (SAVE VIDEO) ----
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    fps_save = int(cap.get(cv2.CAP_PROP_FPS))
+    if fps_save == 0:
+        fps_save = 30  # fallback for webcams
+
+    width  = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    out = cv2.VideoWriter(args.output, fourcc, fps_save, (width, height))
+    print(f"🎥 Saving output video to: {args.output}")
+
+    # ---- FPS Counter ----
+    prev_time = time.time()
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        # Fix incorrect color channels
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+
+        results = model(frame, conf=0.20)[0]
+
+        # Draw detections
+        for box, conf, cls in zip(results.boxes.xyxy, results.boxes.conf, results.boxes.cls):
+            x1, y1, x2, y2 = map(int, box.tolist())
+            pts = np.array([[x1, y1], [x2, y1], [x2, y2], [x1, y2]], np.int32)
+
+            # Green polyline
+            cv2.polylines(frame, [pts], True, (0, 255, 0), 3)
+
+            label = f"{model.names[int(cls)]} {float(conf):.2f}"
+            cv2.putText(frame, label, (x1, y1 - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+
+        # FPS display
+        now = time.time()
+        fps = 1 / (now - prev_time)
+        prev_time = now
+
+        cv2.putText(frame, f"FPS: {fps:.1f}", (20, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 255), 2)
+
+        # ---- SAVE FRAME TO VIDEO ----
+        out.write(frame)
+
+        # ---- SHOW WINDOW ----
+        cv2.imshow("Pothole Polyline Detection", frame)
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
+    cap.release()
+    out.release()
+    cv2.destroyAllWindows()
+    print("✅ Video saved successfully!")
+
+if __name__ == "__main__":
     main()
